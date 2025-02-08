@@ -22,7 +22,7 @@ export default function Login() {
               <label className="block text-gray-700">Email</label>
               <input
                 type="email"
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -32,13 +32,13 @@ export default function Login() {
               <label className="block text-gray-700">Password</label>
               <input
                 type="password"
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">
+            <button type="submit" className="w-full bg-purple-800 text-white py-2 rounded-md hover:bg-purple-900">
               Login
             </button>
           </form>
