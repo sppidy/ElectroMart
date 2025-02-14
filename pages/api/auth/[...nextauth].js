@@ -1,45 +1,25 @@
-import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { createClient } from "@supabase/supabase-js";
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export default NextAuth({
   providers: [
     CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
       async authorize(credentials) {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error, user } = await supabase.auth.signInWithPassword({
           email: credentials.email,
-          password: credentials.password,
+          password: credentials.password
         });
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        return data.user ? { id: data.user.id, email: data.user.email } : null;
-      },
-    }),
+        if (error || !user) throw new Error('Invalid credentials');
+        return { id: user.id, email: user.email };
+      }
+    })
   ],
-  secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt" },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id;
-      }
-      return session;
-    },
+    async jwt({ token, user }) { if (user) token.id = user.id; return token; },
+                        async session({ session, token }) { session.user.id = token.id; return session; }
   },
+  pages: { signIn: '/login' }
 });
