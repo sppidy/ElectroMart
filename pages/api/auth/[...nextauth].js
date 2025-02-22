@@ -1,45 +1,82 @@
-import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { createClient } from "@supabase/supabase-js";
+// pages/api/auth/[...nextauth].js
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+dotenv.config();
+
+console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log('Service Key:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Missing');
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const ADMIN_UUID = process.env.ADMIN_UUID;
 
 export default NextAuth({
   providers: [
     CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
       async authorize(credentials) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: credentials.email,
-          password: credentials.password,
-        });
+        console.log('Authorize started for:', credentials.email);
+        try {
+          const { data: { user }, error } = await supabase.auth.signInWithPassword({
+            email: credentials.email,
+            password: credentials.password
+          });
 
-        if (error) {
-          throw new Error(error.message);
+          if (error || !user) {
+            console.error('Supabase auth error:', error?.message);
+            throw new Error('Invalid credentials');
+          }
+
+          console.log('User authenticated:', user.id, user.email);
+
+          // Determine role based on UUID
+          if (!ADMIN_UUID) {
+            console.error('Missing ADMIN_UUID');
+            throw new Error('Server configuration error: Missing admin UUID');
+          }
+
+          const userRole = user.id === ADMIN_UUID ? 'admin' : 'user';
+          console.log('Assigned role based on UUID:', userRole);
+
+          if (userRole === 'admin' && user.id !== ADMIN_UUID) {
+            console.error('Admin UUID mismatch:', user.id, '!=', ADMIN_UUID);
+            throw new Error('Unauthorized: Invalid admin credentials');
+          }
+
+          console.log('Authorize successful:', { id: user.id, email: user.email, role: userRole });
+          return { id: user.id, email: user.email, role: userRole };
+        } catch (err) {
+          console.error('Authorize failed:', err.message);
+          throw err;
         }
-
-        return data.user ? { id: data.user.id, email: data.user.email } : null;
-      },
-    }),
+      }
+    })
   ],
-  secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.email = user.email;
+        token.role = user.role;
       }
+      console.log('JWT Token:', token);
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (token) {
         session.user.id = token.id;
+        session.user.email = token.email;
+        session.user.role = token.role;
       }
-      return session;
-    },
+      console.log('Session Data:', session);
+      return token ? session : null;
+    }
   },
+  pages: { signIn: '/login' },
+  session: { strategy: 'jwt' }
 });
